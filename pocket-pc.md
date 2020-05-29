@@ -45,7 +45,9 @@ The [CEGCC project](http://cegcc.sourceforge.net/) hosts compile tools based on 
 
 I created a simple test program on my Ubuntu system using the Debian-based CEGCC compilers, but oddly was unable to FTP to (or even ping) the devices from that system, even though they were definitely on the local WiFi network and had internet access, so couldn't test it. I don't know whether this is because Windows has some compatibility-mode networking layer that Pocket PC devices use but Ubuntu doesn't?
 
-For better ease of testing, I installed the compilers on a virtual machine within Windows instead, so that I could get FTP access. You could probably get the compilers to work within the Linux Subsystem for Windows, but I haven't tried that yet.
+For better ease of testing, I installed the compilers on a virtual machine within Windows instead, so that I could get FTP access.
+
+*EDIT: Turns out FTP isn't always reliable on Windows either... I'm starting to suspect it's the WiFi connection to the device that's the problem, given it's using 2007-era WiFi protocols and drivers.*
 
 The following sections document the steps required to get the compilers to work.
 
@@ -106,3 +108,13 @@ arm-mingw32ce-ranlib: error while loading shared libraries: libfl.so.2: cannot o
 This is because the `flex` library (for lexer support) was missing from my system. I installed it using `sudo apt install flex`, ran the previous command again, and it worked.
 
 Now, after re-running the `g++` call, we get a `test.exe` executable. If this is copied onto the device and run, a message box will be displayed!
+
+### "Error while loading shared libraries: libmpc.so.3"
+
+I also tried the above on Windows Subsystem for Linux 2, out of interest. Upon first attempting to compile the test application, I got the error:
+
+```
+/usr/local/stow/mingw32ce/bin/../libexec/gcc/arm-mingw32ce/9.3.0/cc1plus: error while loading shared libraries: libmpc.so.3: cannot open shared object file: No such file or directory
+```
+
+This was fixed by installing the `libmpc-dev` package: `sudo apt install libmpc-dev'.
