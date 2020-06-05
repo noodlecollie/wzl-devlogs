@@ -118,3 +118,27 @@ I also tried the above on Windows Subsystem for Linux 2, out of interest. Upon f
 ```
 
 This was fixed by installing the `libmpc-dev` package: `sudo apt install libmpc-dev'.
+
+## Programming API
+
+A useful document concerning the Windows API with respect to Windows CE can be found [here](https://users.cs.northwestern.edu/~pdinda/rtclass/windows.pdf). Microsoft API documentation for Windows CE can be found [here](https://docs.microsoft.com/en-us/previous-versions/windows/embedded/aa452822%28v%3dmsdn.10%29).
+
+### Creating a Window
+
+It seems to be very easy to create a floating window for Windows CE, but quite difficult to work out the correct set of parameters to create a normal fullscreen window with an "OK" button in the top right. After some experimentation, I found that the following call seems to work:
+
+``` c++
+CreateWindow(L"WindowClass",        // Class
+             L"WindowTitle",        // Title
+             WS_VISIBLE,            // Style
+             CW_USEDEFAULT,         // X
+             CW_USEDEFAULT,         // Y
+             CW_USEDEFAULT,         // Width
+             CW_USEDEFAULT,         // Height
+             NULL,                  // Parent window
+             NULL,                  // Child/menu
+             hApplicationInstance,  // Instance passed into WinMain
+             NULL);                 // User data
+```
+
+The crucual parameter appears to be the window style `WS_VISIBLE`. If this is ommitted, the window is displayed as floating and without a close button, requiring it to be killed through the task manager.
