@@ -1,4 +1,4 @@
-# Compiling for Pocket PC
+# Compiling Programs for Pocket PC in 2020
 
 During the 2020 coronavirus lockdown, I bought some old Pocket PC-based mobile devices off eBay for a bit of fun, and wanted to see whether I could get them to run my own programs. This page details my explorations into this.
 
