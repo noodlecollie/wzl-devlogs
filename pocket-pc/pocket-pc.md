@@ -155,10 +155,11 @@ If you want to link with what would normally be CommCtrl.dll on Windows, the com
 # Compile the source file into an object file (main.o)
 $ arm-mingw32ce-g++ -c main.cpp
 
-# Link main.o into an executable called test.exe, linking also against libcommctrl.a
-# The linker -l option automatically adds the "lib" prefix and the ".a" suffix, so
-# all you need to supply is -lcommctrl
-# VERY IMPORTANT: the -l option must go *after* the object files, or it will be ignored!
+# Link main.o into an executable called test.exe, linking also against
+# libcommctrl.a The linker -l option automatically adds the "lib"
+# prefix and the ".a" suffix, so all you need to supply is -lcommctrl
+# VERY IMPORTANT: the -l option must go *after* the object files, or
+# it will be ignored!
 $ arm-mingw32ce-g++ -o test.exe main.o -lcommctrl
 ```
 
@@ -186,26 +187,21 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             ZeroMemory(&mbi, sizeof(mbi));
 
             mbi.cbSize = sizeof(mbi);
-            mbi.hwndParent = hwnd;          // Parent window that will own the menu bar.
-            mbi.nToolBarId = 1;             // Some unique ID for the bar, which can be used to distinguish.
-                                            // UI elements between one another.
-            mbi.hInstRes = hInstance;       // The application instance that owns the resources that the bar uses.
+
+            // Parent window that will own the menu bar.
+            mbi.hwndParent = hwnd;
+
+            // Some unique ID for the bar, which can be used to distinguish
+            // UI elements between one another.
+            mbi.nToolBarId = 1;
+
+            // The application instance that owns the resources that the bar uses.
+            mbi.hInstRes = hInstance;
 
             // This seems to be the most important property regarding how the bar looks.
-            // Several flags are abvailable to control its appearance:
-            // - SHCMBF_COLORBK:        "Sets the background colour for the menu bar."
-            //                          I'm assuming this is used for other API calls and not for creation?
-            // - SHCMBF_EMPTYBAR:       "Creates an empty menu bar."
-            // - SHCMBF_HIDDEN:         "Creates the menu bar initially hidden."
-            // - SHCMBF_HIDESPIBUTTON:  "Creates the menu bar with no Input Panel button."
-            //                          Windows Mobile only.
-            // - SHCMBF_HMENU:          "Specifies an HMENU value for a resource rather than for toolbar
-            //                          information."
-            //                          This means that mbi.nToolBarId would be used to identify a resource
-            //                          within hInstRes, and this resource would be loaded into the menu bar.
-            //                          I have no idea what this actually means in practice.
-
-            // It appears that SHCMBF_EMPTYBAR does make a menu bar appear correctly.
+            // Several flags are abvailable to control its appearance: see
+            // https://docs.microsoft.com/en-us/previous-versions/windows/embedded/aa453721(v%3Dmsdn.10)
+            // It appears that SHCMBF_EMPTYBAR works the best.
             mbi.dwFlags = SHCMBF_EMPTYBAR;
 
             // If this call was successful, mbi.hwndMB holds a handle to the bar that was created.
@@ -217,16 +213,22 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 // The method of creating a button is actually quite involved. Luckily, after stumbling
                 // upon the cpp.hotexamples.com link, I learned that it involves the following:
 
-                tbButton.iBitmap = I_IMAGENONE;                 // This is a pre-defined constant for buttons
-                                                                // that do not use bitmaps.
-                tbButton.fsState = TBSTATE_ENABLED;             // Make sure the button starts out enabled.
-                tbButton.fsStyle = BTNS_BUTTON | BTNS_AUTOSIZE; // Make it look like a button, and take up
-                                                                // the correct amount of space.
-                tbButton.dwData = 0;                            // I think this is arbitrary user data stored
-                                                                // on the button.
-                tbButton.idCommand = 2;                         // Some ID representing the button's command.
-                                                                // This is passed into the WindowProc when
-                                                                // the button is pressed.
+                // This is a pre-defined constant for buttons that do not use bitmaps.
+                tbButton.iBitmap = I_IMAGENONE;
+
+                // Make sure the button starts out enabled.
+                tbButton.fsState = TBSTATE_ENABLED;
+
+                // Make it look like a button, and take up the correct amount of space.
+                tbButton.fsStyle = BTNS_BUTTON | BTNS_AUTOSIZE;
+
+                // I think this is arbitrary user data stored on the button.
+                tbButton.dwData = 0;
+
+                // Some ID representing the button's command. This is passed into the
+                // WindowProc when the button is pressed, and can be handled by catering
+                // for the WM_COMMAND message.
+                tbButton.idCommand = 2;
 
                 // In order to display a string, the string must first be registered and given a handle.
                 // The button then stores this handle, instead of storing the string directly.
