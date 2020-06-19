@@ -80,8 +80,8 @@ Save this in a working folder as `main.cpp`.
 
 The CEGCC compiler for C++ code is `arm-mingw32ce-g++`. To compile the code, run:
 
-```
-arm-mingw32ce-g++ -o test.exe main.cpp
+``` bash
+$ arm-mingw32ce-g++ -o test.exe main.cpp
 ```
 
 ### "Archive has no index"
@@ -93,10 +93,12 @@ The first time you run this code, you'll likely get an error that looks like:
 collect2: error: ld returned 1 exit status
 ```
 
-I don't know much about the specifics of this, but I think it's to do with the fact that the static libraries provided with the compiler have not had their metadata built. To fix this, run:
+I don't know much about the specifics of this, but I think it's to do with the fact that the static libraries provided with the compiler have not had their metadata built. For more useful information about what a static library `.a` file actually is and why this process is required, check out [this StackOverflow answer](https://stackoverflow.com/a/47924864).
 
-```
-sudo arm-mingw32ce-ranlib /usr/local/stow/mingw32ce/arm-mingw32ce/lib/libstdc++.dll.a
+To fix this, run:
+
+```bash
+$ sudo arm-mingw32ce-ranlib /usr/local/stow/mingw32ce/arm-mingw32ce/lib/libstdc++.dll.a
 ```
 
 For me, this then popped up an additional error:
@@ -142,3 +144,31 @@ CreateWindow(L"WindowClass",        // Class
 ```
 
 The crucual parameter appears to be the window style `WS_VISIBLE`. If this is ommitted, the window is displayed as floating and without a close button, requiring it to be killed through the task manager.
+
+### Using Windows Libraries
+
+Beyond the core functionality of the Windows API, certain controls will require linking to the Windows API libraries. I got a bit confused at first regarding how to do this, but it turned out it was just because of my lack of experience in using the GCC command line.
+
+If you want to link with what would normally be CommCtrl.dll on Windows, the compiler invocation would look something like this:
+
+``` bash
+# Compile the source file into an object file (main.o)
+$ arm-mingw32ce-g++ -c main.cpp
+
+# Link main.o into an executable called test.exe, linking also against libcommctrl.a
+# The linker -l option automatically adds the "lib" prefix and the ".a" suffix, so
+# all you need to supply is -lcommctrl
+$ arm-mingw32ce-g++ -o test.exe main.o -lcommctrl
+```
+
+Note that the CEGCC toolchain provides all the relevant Windows modules as static libraries, as far as I can see. We may need to see what can be done to link against these dynamically in future.
+
+### Showing the Bottom Command Bar
+
+By default, a standard window created with the `CreateWindow()` function call will not display the command bar at the bottom of the screen. However, while searching through the exposed functions in the CEGCC static libraries, I stumbled across `libaygshell.a` and looked up what it was used for. [This page](https://social.msdn.microsoft.com/Forums/en-US/c1271d68-2ab5-4e72-8bd3-8c01ca75b5fd/what-is-aygshell-and-why-cant-the-aygshellh-be-found?forum=vssmartdevicesnative) notes that:
+
+> `aygshell` was originally some shell extensions designed for the Windows Mobile environment.
+> ...
+> As an example the `SHCreateMenuBar()` API which creates menubars at the bottom of your window is part of `aygshell`. Standard Windows CE applications would typically use something like `CommandBar_Create()` instead (which places the menubar at the top of the window).
+
+As my devices are running Windows Mobile, it looks like this library should be used in order to create a native-looking command bar within an application. The actual API documentation for the library seems to be hard to come by, however, so it will probably be worth looking at the headers that are provided with CEGCC.
