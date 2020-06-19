@@ -158,6 +158,7 @@ $ arm-mingw32ce-g++ -c main.cpp
 # Link main.o into an executable called test.exe, linking also against libcommctrl.a
 # The linker -l option automatically adds the "lib" prefix and the ".a" suffix, so
 # all you need to supply is -lcommctrl
+# VERY IMPORTANT: the -l option must go *after* the object files, or it will be ignored!
 $ arm-mingw32ce-g++ -o test.exe main.o -lcommctrl
 ```
 
@@ -171,4 +172,94 @@ By default, a standard window created with the `CreateWindow()` function call wi
 > ...
 > As an example the `SHCreateMenuBar()` API which creates menubars at the bottom of your window is part of `aygshell`. Standard Windows CE applications would typically use something like `CommandBar_Create()` instead (which places the menubar at the top of the window).
 
-As my devices are running Windows Mobile, it looks like this library should be used in order to create a native-looking command bar within an application. The actual API documentation for the library seems to be hard to come by, however, so it will probably be worth looking at the headers that are provided with CEGCC.
+For documentation on the API, see [these Microsoft pages](https://docs.microsoft.com/en-us/previous-versions/windows/embedded/ms907090(v=msdn.10)). The following sample code shows how to create a menu bar, which is adapted from [this page](https://cpp.hotexamples.com/examples/-/-/SHCreateMenuBar/cpp-shcreatemenubar-function-examples.html).
+
+``` c++
+LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    switch (uMsg)
+    {
+        case WM_CREATE:
+        {
+            // To create a menu bar, this struct is used for API operations.
+            SHMENUBARINFO mbi;
+            ZeroMemory(&mbi, sizeof(mbi));
+
+            mbi.cbSize = sizeof(mbi);
+            mbi.hwndParent = hwnd;          // Parent window that will own the menu bar.
+            mbi.nToolBarId = 1;             // Some unique ID for the bar, which can be used to distinguish.
+                                            // UI elements between one another.
+            mbi.hInstRes = hInstance;       // The application instance that owns the resources that the bar uses.
+
+            // This seems to be the most important property regarding how the bar looks.
+            // Several flags are abvailable to control its appearance:
+            // - SHCMBF_COLORBK:        "Sets the background colour for the menu bar."
+            //                          I'm assuming this is used for other API calls and not for creation?
+            // - SHCMBF_EMPTYBAR:       "Creates an empty menu bar."
+            // - SHCMBF_HIDDEN:         "Creates the menu bar initially hidden."
+            // - SHCMBF_HIDESPIBUTTON:  "Creates the menu bar with no Input Panel button."
+            //                          Windows Mobile only.
+            // - SHCMBF_HMENU:          "Specifies an HMENU value for a resource rather than for toolbar
+            //                          information."
+            //                          This means that mbi.nToolBarId would be used to identify a resource
+            //                          within hInstRes, and this resource would be loaded into the menu bar.
+            //                          I have no idea what this actually means in practice.
+
+            // It appears that SHCMBF_EMPTYBAR does make a menu bar appear correctly.
+            mbi.dwFlags = SHCMBF_EMPTYBAR;
+
+            // If this call was successful, mbi.hwndMB holds a handle to the bar that was created.
+            if ( SHCreateMenuBar(&mbi) )
+            {
+                TBBUTTON tbButton;
+                ZeroMemory(&tbButton, sizeof(TBBUTTON));
+
+                // The method of creating a button is actually quite involved. Luckily, after stumbling
+                // upon the cpp.hotexamples.com link, I learned that it involves the following:
+
+                tbButton.iBitmap = I_IMAGENONE;                 // This is a pre-defined constant for buttons
+                                                                // that do not use bitmaps.
+                tbButton.fsState = TBSTATE_ENABLED;             // Make sure the button starts out enabled.
+                tbButton.fsStyle = BTNS_BUTTON | BTNS_AUTOSIZE; // Make it look like a button, and take up
+                                                                // the correct amount of space.
+                tbButton.dwData = 0;                            // I think this is arbitrary user data stored
+                                                                // on the button.
+                tbButton.idCommand = 2;                         // Some ID representing the button's command.
+                                                                // This is passed into the WindowProc when
+                                                                // the button is pressed.
+
+                // In order to display a string, the string must first be registered and given a handle.
+                // The button then stores this handle, instead of storing the string directly.
+                tbButton.iString = ::SendMessage(mbi.hwndMB, TB_ADDSTRING, 0, (LPARAM)(TEXT("TEST")));
+
+                // We ask how many buttons there are in the toolbar. We don't strictly need to do this in
+                // this example, but if we pass the count as the first message argument below, it ensures
+                // that the new button will always be added to the end of the menu bar, after all other
+                // buttons.
+                int buttonCount = ::SendMessage(mbi.hwndMB, TB_BUTTONCOUNT, 0, 0);
+
+                // Finally, we send a message to add the button we just set up.
+                ::SendMessage(mbi.hwndMB, TB_INSERTBUTTON, buttonCount, (LPARAM)&tbButton);
+            }
+
+            break;
+        }
+
+        case WM_PAINT:
+        {
+            PAINTSTRUCT ps;
+            HDC hdc = BeginPaint(hwnd, &ps);
+
+            // Fill the entire window and then draw the menu bar.
+            // There is no need to adjust the rect that is filled here -
+            // it appears to already be correctly sized to take into account
+            // the menu bar.
+            FillRect(hdc, &ps.rcPaint, (HBRUSH) (COLOR_WINDOW+1));
+            DrawMenuBar(hwnd);
+
+            EndPaint(hwnd, &ps);
+            break;
+        }
+    }
+}
+```
