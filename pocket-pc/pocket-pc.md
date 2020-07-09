@@ -265,3 +265,64 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
 }
 ```
+
+## Strings: Unicode, wchar_t, UTF-8, UTF-16... What the hell is all this?
+
+Man, this is a pain. This is a paaaaain. It's super-easy to get confused with all of these different concepts, so here's my attempt to solidify my knowledge.
+
+### 1. "Unicode" has nothing to do with how strings are represented on the device
+
+There's a lot of confusion of terminology, both in my head and also on the pages I've been reading, when discussing "Unicode" text. What Unicode actually is is a defined mapping for every type of character used in human languages. Each character is assigned a "code point", which is essentially a number, and it is up to the device in question to encode that number in a way that can be used within computer programs.
+
+### 2. The "UTF-Something" variants specify some possible encodings
+
+Here, it is important to make a distinction between a *character* and a *byte*, since in ASCII text (which came before Unicode), a character and a byte are essentially the same thing. This can be seen by the fact that a single byte in C is referred to as a `char`.
+
+In the Unicode sense, a "character" refers to something that is used to form words in part of a written language. A "byte" is a unit of computer memory. One character in a string in your program may take up more than one byte; exactly how many bytes it does take up depends on how it is encoded.
+
+One more, potentially confusing aspect in all of this is the consideration of how strings are actually indexed in languages like C. A string is nothing more special than an array of bytes that is interpreted as text, and back in ASCII land, each array element corresponds exactly to one character. If the size of each element in the array is not actually large enough to support all the characters represented by Unicode, certain characters will be encoded using more than one consecutive element. This means that the length of the string in terms of readable characters is no longer equal to the length of the array in terms of elements.
+
+So, just to solidify these terms once again before we go on:
+
+* **Character:** A symbol written down in a human language, where multiple characters form words.
+* **String element:** One individually indexable part of a string. May not map one-to-one onto characters.
+* **Byte:** A unit of computer memory. Strings may use one byte per element, or more than one.
+
+The UTF encoding standards were at least partially designed (as far as I can deduce) to allow programmers to choose to retain the one-to-one mapping between string elements and characters if they wanted to. Unfortunately, in practice this doesn't seem to work very well. Consider the three variants:
+
+* UTF-8 uses 8 bits (one byte) per string element. The first 128 values of a UTF-8 character map exactly onto ASCII characters, so UTF-8 is 100% ASCII-compatible. Characters whose codes exceed the range of 8 bits are composed of multiple bytes (and so multiple string elements) - that's just what you get by using this encoding.
+* UTF-16 uses 16 bits (two bytes) per string element. Unfortunately, 16 bits is also not enough to encompass all possible Unicode characters, so the possibility of one character spanning multiple string elements still remains. UTF-16 strings are also incompatible with ASCII.
+* UTF-32 uses 32 bits (four bytes) per string element. This covers all Unicode characters, but uses up a lot of memory, so basically no-one uses it. Again, it is incompatible with ASCII.
+
+The only one of these three variants that actually guarantees that each character maps to one string element is UTF-32, which is the least commonly used.
+
+### 3. Microsoft's Unicode support is poorly designed
+
+Microsoft makes `wchar_t` available in C and C++, which on Windows represents a "wide character" of 16 bits. Unfortunately, on Linux `wchar_t` is 32 bits, so the two platforms are not inter-operable when using them.
+
+Microsoft also makes available some functions to convert wide character strings to multi-byte character strings. I'm assuming this was to allow developers to work in a "one string element = one character" way with `wchar_t`, vs. essentially using UTF-8. However, as we know, 16-bit string elements are not large enough to completely eliminate the need for multi-element characters, so it seems a bit pointless.
+
+### 4. Windows CE is a Unicode platform - sort of
+
+The [original CeGCC page](http://cegcc.sourceforge.net/docs/using.html) states that:
+
+> Many applications are currently still coded to cope with one-byte characters. Several operating systems have been providing support for both that traditional way of working, and a more general approach. Windows CE is special in that **it only supports Unicode in many of its API's.** This means that an application that wants to create a file must pass the file name as a Unicode string.
+
+What they actually mean by "Unicode" here is unclear, since ASCII strings are technically Unicode if using UTF-8. However, interestingly, the following code exists in the mingw32ce `stdlib.h` file:
+
+``` c
+_CRTIMP double __cdecl __MINGW_NOTHROW atof(const char*);
+_CRTIMP int __cdecl __MINGW_NOTHROW	atoi(const char*);
+_CRTIMP long __cdecl __MINGW_NOTHROW atol(const char*);
+#if !defined (__STRICT_ANSI__)
+#if !defined (__COREDLL__)
+_CRTIMP double __cdecl __MINGW_NOTHROW _wtof(const wchar_t *);
+_CRTIMP int __cdecl __MINGW_NOTHROW _wtoi(const wchar_t *);
+_CRTIMP long __cdecl __MINGW_NOTHROW _wtol(const wchar_t *);
+#endif
+#endif
+```
+
+When running the mingw32ce compilers, `__COREDLL__` is defined, so conversion functions such as `_wtoi` (wide character string to integer) are not available. Indeed, listing functions from `libcoredll.a` reveals that only `atoi` exists, and there are no wide character to integer conversion functions present. There are, however, wide character string manipulation funcions such as `wcsncat`.
+
+Basically, what the hell is going on with the Windows CE API here is really not clear. It looks as though the most sensible thing to do would be to continue to use wide characters as most Windows applications seem to do, but to convert to multi-byte strings when using functions such as `atoi` (I think it's relatively unlikely that incompatible characters will be fed into this anyway).
