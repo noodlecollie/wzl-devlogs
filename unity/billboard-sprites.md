@@ -65,7 +65,7 @@ public class SpriteBillboard : MonoBehaviour
 }
 ```
 
-If `m_RotateAroundVertical` is `true` (left tree), the sprite stays upright but orients itself according to the camera. If it's `false` (right tree), the upward direction is set to be the same as the camera's up direction.
+If `m_RotateAroundVertical` is `true` (right tree), the sprite stays upright but orients itself according to the camera. If it's `false` (left tree), the upward direction is set to be the same as the camera's up direction.
 
 ![Settings pane](img/sprite-trees.png)
 
